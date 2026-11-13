@@ -3,7 +3,7 @@ import logging
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.crud.pdf import get_pdf_by_request_id, search_user_history
+from app.crud.pdf_history import get_pdf_by_request_id, search_user_history
 from app.db.database import get_session
 
 log = logging.getLogger(__name__)

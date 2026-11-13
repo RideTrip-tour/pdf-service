@@ -37,7 +37,7 @@ class Transfer(BaseModel):
 class Travelers(BaseModel):
     adults: int | None = Field(None, ge=0)
     children: int | None = Field(None, ge=0)
-    group_ski_level: str | None = None
+    group_ski_level: str
 
 
 class Accessibility(BaseModel):
