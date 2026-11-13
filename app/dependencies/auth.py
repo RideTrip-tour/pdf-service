@@ -30,7 +30,6 @@ def get_current_user_id(request: Request) -> int:
     user_id = _get_id_from_state(request, "user_id")
     if user_id is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
         )
     return user_id

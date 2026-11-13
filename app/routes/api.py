@@ -4,11 +4,10 @@ import json
 from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
 
-from app.schemas.contracts import PdfRequest
-from app.routes.query_params import PDFServiceDep, UserDep, AnonymDep
-from app.redis.tasks import generate_pdf_task
 from app.redis.redis import async_redis
-
+from app.redis.tasks import generate_pdf_task
+from app.routes.query_params import AnonymDep, PDFServiceDep, UserDep
+from app.schemas.contracts import PdfRequest
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 
@@ -42,6 +41,7 @@ async def pdf_events(request_id: str):
         finally:
             await pubsub.unsubscribe(f"task_updates:{request_id}")
             await pubsub.close()
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -49,8 +49,8 @@ async def pdf_events(request_id: str):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
-            "Content-Encoding": "identity"
-        }
+            "Content-Encoding": "identity",
+        },
     )
 
 

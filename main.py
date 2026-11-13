@@ -7,9 +7,9 @@ from internal_middleware import (
     build_user_context_middleware,
 )
 
-from config import settings
 from app.routes.api import router
 from app.utils.logging import LOGGING_CONFIG
+from config import settings
 
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)

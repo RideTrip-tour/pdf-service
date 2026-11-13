@@ -1,9 +1,7 @@
-import logging
-
 from sqlalchemy.orm import Session
 
-from app.schemas.contracts import PdfRequest
 from app.crud.pdf import save_pdf_history
+from app.schemas.contracts import PdfRequest
 from app.service.renderer import render_tour_pdf
 from app.service.sanitize import sanitize_payload
 

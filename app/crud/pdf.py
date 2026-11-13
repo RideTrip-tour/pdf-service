@@ -1,11 +1,10 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
-from sqlalchemy.orm import Session
-
-from app.schemas.contracts import PdfRequest
-from app.db.models import UserPDFHistory
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from app.db.models import UserPDFHistory
+from app.schemas.contracts import PdfRequest
 
 
 def get_pdf_by_request_id(session: Session, request_id: str) -> UserPDFHistory | None:
@@ -59,7 +58,7 @@ def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None
         date_to=date_to,
         activity=activity,
         file_data=pdf_bytes,
-        created_at=datetime.now(),
+        created_at=datetime.now(UTC),
     )
     db.add(record)
     db.commit()

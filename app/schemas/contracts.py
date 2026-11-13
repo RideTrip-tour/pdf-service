@@ -92,7 +92,7 @@ class TourPdfPayload(BaseModel):
             self.accommodation,
             self.transfer,
             self.travelers,
-            self.price
+            self.price,
         ]
         if not any(check_fields):
             raise ValueError("At least one parameter requireed.")
