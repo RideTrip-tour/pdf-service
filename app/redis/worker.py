@@ -1,6 +1,13 @@
-# Celery application setup with Redis broker
+import logging
+
 from celery import Celery
-from app.config import settings
+from config import settings
+
+
+logging.getLogger("weasyprint").setLevel(logging.WARNING)
+logging.getLogger("fontTools").setLevel(logging.WARNING)
+logging.getLogger("fontTools.subset").setLevel(logging.WARNING)
+
 
 celery_app = Celery(
     "worker",
@@ -9,7 +16,6 @@ celery_app = Celery(
     include=["app.tasks.tasks"]
 )
 
-# Configure task serialization and result expiration
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],
@@ -20,5 +26,4 @@ celery_app.conf.update(
     task_track_started=True,
 )
 
-# Auto-discover tasks in the app.tasks module
 celery_app.autodiscover_tasks(["app"])

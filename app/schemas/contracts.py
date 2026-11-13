@@ -100,8 +100,6 @@ class TourPdfPayload(BaseModel):
 
 
 class PdfRequest(BaseModel):
-    """Обёртка сообщения в Kafka: конверт + payload."""
-
     request_id: str
     template_id: str = "tour"
     user_id: int | None = None

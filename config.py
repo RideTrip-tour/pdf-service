@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     app_name: str = "pdf-service"
     debug: bool = False
 
+    url_prefix: str = "http://localhost:8000/"
+
     db_host: str = Field(validation_alias="DB_PDF_SERVICE_HOST", default="127.0.0.1")
     db_port: int = Field(validation_alias="DB_PDF_SERVICE_PORT", default=5432)
     db_name: str = Field(validation_alias="DB_PDF_SERVICE_NAME", default="rrt")

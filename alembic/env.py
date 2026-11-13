@@ -9,8 +9,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.config import settings as se
-from app.db.models import Base
+from config import settings as se
+from app.db.base import Base
 
 target_metadata = Base.metadata
 

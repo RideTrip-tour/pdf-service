@@ -1,14 +1,10 @@
-import json
 import logging
-from datetime import datetime
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.schemas.contracts import PdfRequest
 from app.crud.pdf import get_pdf_by_request_id, search_user_history
 from app.db.database import get_session
-from app.service.sanitize import sanitize_payload
 
 log = logging.getLogger(__name__)
 

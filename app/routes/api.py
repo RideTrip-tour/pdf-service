@@ -1,20 +1,14 @@
 import asyncio
 import json
-import logging
-from datetime import datetime
 
 from fastapi import APIRouter, Response
-from pydantic import BaseModel
-from sse_starlette import EventSourceResponse
-import redis.asyncio as aioredis
 from fastapi.responses import StreamingResponse
 
 from app.schemas.contracts import PdfRequest
 from app.routes.query_params import PDFServiceDep, UserDep, AnonymDep
-from app.tasks.tasks import generate_pdf_task
-from app.core.redis import async_redis
+from app.redis.tasks import generate_pdf_task
+from app.redis.redis import async_redis
 
-log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 
@@ -33,19 +27,15 @@ def generate_pdf(
 async def pdf_events(request_id: str):
     async def event_generator():
         pubsub = async_redis.pubsub()
-        channel = f"task_updates:{request_id}"
-        await pubsub.subscribe(channel)
-        log.info(f"SSE: Подписались на {channel}")
+        await pubsub.subscribe(f"task_updates:{request_id}")
         try:
             async for message in pubsub.listen():
                 if message["type"] != "message":
                     continue
                 data = message["data"]
-                log.info(f"SSE: Получены данные: {data}")
                 yield f"data: {data}\n\n"
                 parsed = json.loads(data)
                 if parsed.get("status") in ["ready", "failed"]:
-                    log.info("SSE: закрываем соединение")
                     break
         except asyncio.CancelledError:
             pass
@@ -71,7 +61,6 @@ def download_pdf(service: PDFServiceDep, request_id: str):
         content=file_bytes,
         media_type="application/pdf",
         headers={
-            # заставляет браузер скачать файл с именем "tour_{request_id}.pdf"
             "Content-Disposition": f'attachment; filename="tour_{request_id}.pdf"'
         },
     )
