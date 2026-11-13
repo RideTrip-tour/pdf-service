@@ -35,6 +35,6 @@ def generate_pdf_task(self, request_data: dict):
             "reason": str(exc),
         }
         sync_redis.publish(f"task_updates:{request.request_id}", json.dumps(message))
-        raise self.retry(exc=exc, countdown=2**self.request.retries)
+        raise self.retry(countdown=2**self.request.retries)
     finally:
         db.close()

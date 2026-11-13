@@ -5,17 +5,17 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class Route(BaseModel):
-    from_place: str = Field(..., description="Город отправления")
-    to_place: str = Field(..., description="Город назначения")
+    from_place: str | None = Field(None, description="Город отправления")
+    to_place: str | None = Field(None, description="Город назначения")
 
 
 class Dates(BaseModel):
-    date_from: date
-    date_to: date
+    date_from: date | None = None
+    date_to: date | None = None
 
 
 class Accommodation(BaseModel):
-    name: str = Field(..., description="Название отеля для отображения")
+    name: str | None = Field(None, description="Название отеля для отображения")
     partner_url: str | None = Field(
         None, description="Ссылка на партнёра (Яндекс Путешествия)"
     )
@@ -28,7 +28,7 @@ class TransferType(str, Enum):
 
 
 class Transfer(BaseModel):
-    type: TransferType
+    type: TransferType | None = None
     parking_needed: bool | None = Field(
         None, description="Только для OWN_CAR: нужна ли парковка"
     )
@@ -37,7 +37,7 @@ class Transfer(BaseModel):
 class Travelers(BaseModel):
     adults: int | None = Field(None, ge=0)
     children: int | None = Field(None, ge=0)
-    group_ski_level: str
+    group_ski_level: str | None = None
 
 
 class Accessibility(BaseModel):
@@ -76,7 +76,7 @@ class TourPdfPayload(BaseModel):
 
     route: Route | None = None
     dates: Dates | None = None
-    activity: list[str] | None = None
+    activity: list[str | None] | None = None
     accommodation: Accommodation | None = None
     transfer: Transfer | None = None
     travelers: Travelers | None = None

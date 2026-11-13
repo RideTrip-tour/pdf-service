@@ -74,6 +74,8 @@ cssselect2==0.10.1
     # via
     #   -r requirements.txt
     #   weasyprint
+fakeredis==2.40.0
+    # via -r requirements.test.in
 fastapi==0.162.4
     # via
     #   -r requirements.txt
@@ -216,9 +218,12 @@ pyyaml==6.0.3
 redis==6.4.0
     # via
     #   -r requirements.txt
+    #   fakeredis
     #   kombu
 ruff==0.16.4
     # via -r requirements.test.in
+sortedcontainers==2.4.0
+    # via fakeredis
 sqlalchemy==2.0.25
     # via
     #   -r requirements.txt

@@ -47,7 +47,7 @@ def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None
     to_place = payload.route.to_place if payload.route else None
     date_from = payload.dates.date_from if payload.dates else None
     date_to = payload.dates.date_to if payload.dates else None
-    activity = ", ".join(payload.activity) if payload.activity else None
+    activity = ", ".join(act for act in payload.activity if act) if payload.activity else None
 
     record = UserPDFHistory(
         user_id=request.user_id,
