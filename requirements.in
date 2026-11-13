@@ -1,0 +1,17 @@
+fastapi==0.162.4
+uvicorn[standard]==0.27.0
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+celery[redis]>=5.5.0
+redis>=6.1.0,<7.0.0
+alembic==1.13.1
+pydantic-settings==2.1.0
+flower==2.0.1
+jinja2==3.1.4
+weasyprint==70.0
+internal-middleware @ git+https://github.com/RideTrip-tour/middlewares.git@a73f358077acfa0855d9e901a0b4ebe1015b298f
+sse-starlette==3.6.0
+starlette==1.10.0
+justhtml===3.16.0
+packaging>=21.3
+psycopg
