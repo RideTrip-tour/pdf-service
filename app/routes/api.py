@@ -10,7 +10,7 @@ import redis.asyncio as aioredis
 from fastapi.responses import StreamingResponse
 
 from app.schemas.contracts import PdfRequest
-from app.routes.query_params import PDFServiceDep, UserDep
+from app.routes.query_params import PDFServiceDep, UserDep, AnonymDep
 from app.tasks.tasks import generate_pdf_task
 from app.core.redis import async_redis
 
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 @router.post("/generate_tour", status_code=202)
 def generate_pdf(
     request: PdfRequest,
-    user_id: UserDep,
+    user_id: AnonymDep,
 ):
     request.user_id = user_id
     generate_pdf_task.delay(request.model_dump())
@@ -42,7 +42,6 @@ async def pdf_events(request_id: str):
                     continue
                 data = message["data"]
                 log.info(f"SSE: Получены данные: {data}")
-                log.info("TYPE DATA: %s", type(data))
                 yield f"data: {data}\n\n"
                 parsed = json.loads(data)
                 if parsed.get("status") in ["ready", "failed"]:

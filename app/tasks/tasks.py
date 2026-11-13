@@ -38,9 +38,3 @@ def generate_pdf_task(self, request_data: dict):
     finally:
         db.close()
 
-
-@celery_app.task
-def send_notification(user_id: int, message: str):
-    """Send a notification to a user asynchronously."""
-    # Your notification logic here
-    return {"sent_to": user_id, "message": message}

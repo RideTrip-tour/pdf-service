@@ -43,14 +43,21 @@ def search_user_history(
 def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None:
     """Сохраняет сгенерированный PDF и метаданные в историю."""
     payload = request.payload
+
+    from_place = payload.route.from_place if payload.route else None
+    to_place = payload.route.to_place if payload.route else None
+    date_from = payload.dates.date_from if payload.dates else None
+    date_to = payload.dates.date_to if payload.dates else None
+    activity = ", ".join(payload.activity) if payload.activity else None
+
     record = UserPDFHistory(
         user_id=request.user_id,
         request_id=request.request_id,
-        from_place=payload.route.from_place,
-        to_place=payload.route.to_place,
-        date_from=payload.dates.date_from,
-        date_to=payload.dates.date_to,
-        activity=", ".join(payload.activity),
+        from_place=from_place,
+        to_place=to_place,
+        date_from=date_from,
+        date_to=date_to,
+        activity=activity,
         file_data=pdf_bytes,
         created_at=datetime.now(),
     )

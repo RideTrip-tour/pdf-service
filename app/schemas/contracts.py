@@ -1,7 +1,7 @@
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Route(BaseModel):
@@ -74,14 +74,29 @@ class Price(BaseModel):
 class TourPdfPayload(BaseModel):
     """Содержимое PDF для одного тура."""
 
-    route: Route
-    dates: Dates
-    activity: list[str]
-    accommodation: Accommodation
-    transfer: Transfer
+    route: Route | None = None
+    dates: Dates | None = None
+    activity: list[str] | None = None
+    accommodation: Accommodation | None = None
+    transfer: Transfer | None = None
     travelers: Travelers | None = None
-    additional_options: AdditionalOptions = AdditionalOptions()
-    price: Price
+    additional_options: AdditionalOptions | None = None
+    price: Price | None = None
+
+    @model_validator(mode="after")
+    def check_at_leats_one_param(self):
+        check_fields = [
+            self.route,
+            self.dates,
+            self.activity,
+            self.accommodation,
+            self.transfer,
+            self.travelers,
+            self.price
+        ]
+        if not any(check_fields):
+            raise ValueError("At least one parameter requireed.")
+        return self
 
 
 class PdfRequest(BaseModel):
