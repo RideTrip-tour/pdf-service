@@ -1,25 +1,36 @@
-import pytest
-from unittest.mock import MagicMock
 from datetime import date
-from pydantic import ValidationError
 from types import SimpleNamespace
-from sqlalchemy.dialects import postgresql
-from fastapi import HTTPException, status, FastAPI
-from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 
-from app.crud.pdf_history import save_pdf_history, get_pdf_by_request_id, search_user_history
-from app.schemas.contracts import PdfRequest, TourPdfPayload, Route, Dates, Accommodation, Travelers
-from app.service.save import process_message
-from app.dependencies.auth import get_optional_user_id, get_current_user_id
-from app.service.pdf import PDFService, get_pdf_service
-from app.service.sanitize import sanitize_payload, sanitize_string
-from app.service.renderer import render_tour_pdf
+import pytest
+from fastapi import FastAPI, HTTPException, status
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+from sqlalchemy.dialects import postgresql
+
+from app.crud.pdf_history import (
+    get_pdf_by_request_id,
+    save_pdf_history,
+    search_user_history,
+)
+from app.dependencies.auth import get_current_user_id, get_optional_user_id
 from app.routes.api import router
+from app.schemas.contracts import (
+    Accommodation,
+    Dates,
+    PdfRequest,
+    Route,
+    TourPdfPayload,
+    Travelers,
+)
+from app.service.pdf import PDFService, get_pdf_service
+from app.service.renderer import render_tour_pdf
+from app.service.sanitize import sanitize_payload, sanitize_string
+from app.service.save import process_message
 from main import app
 
 
 class FakeSession:
-
     def __init__(self):
         self.added_objects = []
         self.commits = 0
@@ -39,7 +50,7 @@ def test_save_guest_history_skipped():
     request = PdfRequest(
         request_id="guest-1",
         user_id=None,
-        payload=TourPdfPayload(route=Route(from_place="A", to_place="B"))
+        payload=TourPdfPayload(route=Route(from_place="A", to_place="B")),
     )
 
     save_pdf_history(session, request, b"fake pdf")
@@ -55,8 +66,8 @@ def test_save_user_history():
         user_id=42,
         payload=TourPdfPayload(
             route=Route(from_place="Москва", to_place="Сочи"),
-            dates=Dates(date_from=date(2025, 1, 1), date_to=date(2025, 1, 10))
-        )
+            dates=Dates(date_from=date(2025, 1, 1), date_to=date(2025, 1, 10)),
+        ),
     )
 
     save_pdf_history(session, request, b"fake pdf")
@@ -75,7 +86,7 @@ def test_process_message_calls_render_and_save(monkeypatch):
     request = PdfRequest(
         request_id="test-1",
         user_id=1,
-        payload=TourPdfPayload(route=Route(from_place="A", to_place="B"))
+        payload=TourPdfPayload(route=Route(from_place="A", to_place="B")),
     )
 
     mock_render = MagicMock(return_value=b"fake pdf")
@@ -140,7 +151,7 @@ def test_search_user_history_no_filters(monkeypatch):
 
     def fake_execute(statement):
         captured["sql"] = str(statement.compile(dialect=postgresql.dialect()))
-        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))
+        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=list))
 
     monkeypatch.setattr(session, "execute", fake_execute)
 
@@ -158,7 +169,7 @@ def test_search_user_history_with_filters(monkeypatch):
 
     def fake_execute(statement):
         captured["sql"] = str(statement.compile(dialect=postgresql.dialect()))
-        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))
+        return SimpleNamespace(scalars=lambda: SimpleNamespace(all=list))
 
     monkeypatch.setattr(session, "execute", fake_execute)
 
@@ -185,9 +196,7 @@ def test_search_user_history_returns_list(monkeypatch):
 
     def fake_execute(statement):
         return SimpleNamespace(
-            scalars=lambda: SimpleNamespace(
-                all=lambda: [fake_result_1, fake_result_2]
-            )
+            scalars=lambda: SimpleNamespace(all=lambda: [fake_result_1, fake_result_2])
         )
 
     monkeypatch.setattr(session, "execute", fake_execute)
@@ -241,8 +250,7 @@ def test_download_pdf_raises_404_when_missing(monkeypatch):
     service = PDFService(session)
 
     monkeypatch.setattr(
-        "app.service.pdf.get_pdf_by_request_id",
-        MagicMock(return_value=None)
+        "app.service.pdf.get_pdf_by_request_id", MagicMock(return_value=None)
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -256,8 +264,7 @@ def test_download_pdf_returns_bytes(monkeypatch):
 
     fake_file = SimpleNamespace(file_data=b"fake-pdf-bytes")
     monkeypatch.setattr(
-        "app.service.pdf.get_pdf_by_request_id",
-        MagicMock(return_value=fake_file)
+        "app.service.pdf.get_pdf_by_request_id", MagicMock(return_value=fake_file)
     )
 
     result = service.download_pdf("test-id")
@@ -269,14 +276,17 @@ def test_get_history_returns_list_of_dicts(monkeypatch):
     service = PDFService(session)
 
     fake_record_1 = SimpleNamespace(
-        request_id="1", from_place="Москва", to_place="Сочи",
-        date_from="2025-01-01", date_to="2025-01-10",
-        activity="лыжи", created_at="2025-01-01"
+        request_id="1",
+        from_place="Москва",
+        to_place="Сочи",
+        date_from="2025-01-01",
+        date_to="2025-01-10",
+        activity="лыжи",
+        created_at="2025-01-01",
     )
 
     monkeypatch.setattr(
-        "app.service.pdf.search_user_history",
-        MagicMock(return_value=[fake_record_1])
+        "app.service.pdf.search_user_history", MagicMock(return_value=[fake_record_1])
     )
 
     result = service.get_history(user_id=42)
@@ -303,13 +313,9 @@ def test_sanitize_string_removes_html():
 
 def test_sanitize_payload_cleans_fields():
     payload = TourPdfPayload(
-        route=Route(
-            from_place="<script>alert(1)</script>Москва",
-            to_place="Сочи"
-        ),
+        route=Route(from_place="<script>alert(1)</script>Москва", to_place="Сочи"),
         accommodation=Accommodation(name="Отель<script>alert(1)</script>"),
-        travelers=Travelers(
-            group_ski_level="Любитель<script>alert(1)</script>")
+        travelers=Travelers(group_ski_level="Любитель<script>alert(1)</script>"),
     )
 
     clean = sanitize_payload(payload)
@@ -324,8 +330,7 @@ def test_sanitize_payload_cleans_fields():
 
 def test_sanitize_payload_cleans_activity_list():
     payload = TourPdfPayload(
-        activity=["лыжи<script>alert(1)</script>",
-                  "сноуборд<script>alert(1)</script>"]
+        activity=["лыжи<script>alert(1)</script>", "сноуборд<script>alert(1)</script>"]
     )
     clean = sanitize_payload(payload)
 
@@ -342,9 +347,7 @@ def test_render_tour_pdf_with_empty_payload():
 
 
 def test_render_tour_pdf_returns_pdf_bytes():
-    payload = TourPdfPayload(
-        route=Route(from_place="Москва", to_place="Сочи")
-    )
+    payload = TourPdfPayload(route=Route(from_place="Москва", to_place="Сочи"))
     pdf_bytes = render_tour_pdf(payload)
 
     assert pdf_bytes.startswith(b"%PDF")
@@ -374,7 +377,8 @@ def override_service():
     mock_service = MagicMock()
     mock_service.download_pdf.return_value = b"fake pdf bytes"
     mock_service.get_history.return_value = [
-        {"request_id": "1", "from_place": "Москва"}]
+        {"request_id": "1", "from_place": "Москва"}
+    ]
     app.dependency_overrides[get_pdf_service] = lambda: mock_service
     return mock_service
 
@@ -391,10 +395,13 @@ def test_generate_tour_available_for_guest(monkeypatch):
     mock_delay = MagicMock()
     monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
 
-    response = client.post("/api/pdf/generate_tour", json={
-        "request_id": "guest-1",
-        "payload": {"route": {"from_place": "A", "to_place": "B"}}
-    })
+    response = client.post(
+        "/api/pdf/generate_tour",
+        json={
+            "request_id": "guest-1",
+            "payload": {"route": {"from_place": "A", "to_place": "B"}},
+        },
+    )
 
     assert response.status_code == 202
     mock_delay.assert_called_once()
@@ -406,17 +413,20 @@ def test_generate_tour_available_for_user(monkeypatch):
     mock_delay = MagicMock()
     monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
 
-    response = client.post("/api/pdf/generate_tour", json={
-        "request_id": "user-1",
-        "payload": {"route": {"from_place": "A", "to_place": "B"}}
-    })
+    response = client.post(
+        "/api/pdf/generate_tour",
+        json={
+            "request_id": "user-1",
+            "payload": {"route": {"from_place": "A", "to_place": "B"}},
+        },
+    )
 
     assert response.status_code == 202
     mock_delay.assert_called_once()
 
 
 def test_download_available_for_everyone():
-    mock_service = override_service()
+    override_service()
 
     response = client.get("/api/pdf/download/some-id")
 
