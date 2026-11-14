@@ -5,3 +5,4 @@ pytest-cov==7.1.0
 ruff==0.16.4
 mypy==2.3.1
 fakeredis==2.40.0
+httpx2==2.16.0

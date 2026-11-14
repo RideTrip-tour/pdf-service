@@ -22,6 +22,7 @@ anyio==4.16.0
     # via
     #   -r requirements.txt
     #   fastapi
+    #   httpx2
     #   sse-starlette
     #   starlette
     #   watchfiles
@@ -93,11 +94,16 @@ greenlet==3.5.6
 h11==0.16.0
     # via
     #   -r requirements.txt
+    #   httpcore2
     #   uvicorn
+httpcore2==2.16.0
+    # via httpx2
 httptools==0.9.0
     # via
     #   -r requirements.txt
     #   uvicorn
+httpx2==2.16.0
+    # via -r requirements.test.in
 humanize==4.16.0
     # via
     #   -r requirements.txt
@@ -106,6 +112,7 @@ idna==3.20
     # via
     #   -r requirements.txt
     #   anyio
+    #   httpx2
 iniconfig==2.3.1
     # via pytest
 internal-middleware @ git+https://github.com/RideTrip-tour/middlewares.git@a73f358077acfa0855d9e901a0b4ebe1015b298f
@@ -248,6 +255,10 @@ tornado==6.6.1
     # via
     #   -r requirements.txt
     #   flower
+truststore==0.10.5
+    # via
+    #   httpcore2
+    #   httpx2
 typing-extensions==4.16.0
     # via
     #   -r requirements.txt
@@ -255,6 +266,7 @@ typing-extensions==4.16.0
     #   anyio
     #   click-repl
     #   fastapi
+    #   httpx2
     #   mypy
     #   opentelemetry-api
     #   psycopg

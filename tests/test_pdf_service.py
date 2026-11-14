@@ -4,7 +4,8 @@ from datetime import date
 from pydantic import ValidationError
 from types import SimpleNamespace
 from sqlalchemy.dialects import postgresql
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, FastAPI
+from fastapi.testclient import TestClient
 
 from app.crud.pdf_history import save_pdf_history, get_pdf_by_request_id, search_user_history
 from app.schemas.contracts import PdfRequest, TourPdfPayload, Route, Dates, Accommodation, Travelers
@@ -13,6 +14,8 @@ from app.dependencies.auth import get_optional_user_id, get_current_user_id
 from app.service.pdf import PDFService, get_pdf_service
 from app.service.sanitize import sanitize_payload, sanitize_string
 from app.service.renderer import render_tour_pdf
+from app.routes.api import router
+from main import app
 
 
 class FakeSession:
@@ -346,3 +349,98 @@ def test_render_tour_pdf_returns_pdf_bytes():
 
     assert pdf_bytes.startswith(b"%PDF")
     assert len(pdf_bytes) > 1000
+
+
+def test_references_openapi_exposes_public_and_admin_paths():
+    app = FastAPI()
+    app.include_router(router)
+
+    paths = app.openapi()["paths"]
+
+    assert "/api/pdf/generate_tour" in paths
+    assert "/api/pdf/events/{request_id}" in paths
+    assert "/api/pdf/download/{request_id}" in paths
+    assert "/api/pdf/history" in paths
+
+
+client = TestClient(app)
+
+
+def override_user(user_id: int | None):
+    app.dependency_overrides[get_optional_user_id] = lambda: user_id
+
+
+def override_service():
+    mock_service = MagicMock()
+    mock_service.download_pdf.return_value = b"fake pdf bytes"
+    mock_service.get_history.return_value = [
+        {"request_id": "1", "from_place": "Москва"}]
+    app.dependency_overrides[get_pdf_service] = lambda: mock_service
+    return mock_service
+
+
+@pytest.fixture(autouse=True)
+def cleanup():
+    yield
+    app.dependency_overrides.clear()
+
+
+def test_generate_tour_available_for_guest(monkeypatch):
+    override_user(None)
+
+    mock_delay = MagicMock()
+    monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
+
+    response = client.post("/api/pdf/generate_tour", json={
+        "request_id": "guest-1",
+        "payload": {"route": {"from_place": "A", "to_place": "B"}}
+    })
+
+    assert response.status_code == 202
+    mock_delay.assert_called_once()
+
+
+def test_generate_tour_available_for_user(monkeypatch):
+    override_user(42)
+
+    mock_delay = MagicMock()
+    monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
+
+    response = client.post("/api/pdf/generate_tour", json={
+        "request_id": "user-1",
+        "payload": {"route": {"from_place": "A", "to_place": "B"}}
+    })
+
+    assert response.status_code == 202
+    mock_delay.assert_called_once()
+
+
+def test_download_available_for_everyone():
+    mock_service = override_service()
+
+    response = client.get("/api/pdf/download/some-id")
+
+    assert response.status_code == 200
+    assert response.content == b"fake pdf bytes"
+    assert "application/pdf" in response.headers["content-type"]
+
+
+def test_history_forbidden_for_guest():
+    app.dependency_overrides[get_current_user_id] = lambda: None
+    if get_current_user_id in app.dependency_overrides:
+        del app.dependency_overrides[get_current_user_id]
+
+    response = client.get("/api/pdf/history")
+    assert response.status_code == 401
+
+
+def test_history_available_for_user():
+    override_user(42)
+    override_service()
+    app.dependency_overrides[get_current_user_id] = lambda: 42
+
+    response = client.get("/api/pdf/history", headers={"X-User-ID": "42"})
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert response.json()[0]["request_id"] == "1"

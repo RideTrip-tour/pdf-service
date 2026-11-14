@@ -17,7 +17,7 @@ class Dates(BaseModel):
 class Accommodation(BaseModel):
     name: str | None = Field(None, description="Название отеля для отображения")
     partner_url: str | None = Field(
-        None, description="Ссылка на партнёра (Яндекс Путешествия)"
+        default=None, description="Ссылка на партнёра (Яндекс Путешествия)"
     )
 
 
@@ -35,8 +35,8 @@ class Transfer(BaseModel):
 
 
 class Travelers(BaseModel):
-    adults: int | None = Field(None, ge=0)
-    children: int | None = Field(None, ge=0)
+    adults: int | None = Field(default=None, ge=0)
+    children: int | None = Field(default=None, ge=0)
     group_ski_level: str | None = None
 
 
