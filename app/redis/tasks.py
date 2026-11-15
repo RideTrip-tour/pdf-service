@@ -14,27 +14,30 @@ log = logging.getLogger(__name__)
 @celery_app.task(bind=True, max_retries=3)
 def generate_pdf_task(self, request_data: dict):
     request = PdfRequest(**request_data)
-    db = SessionLocal()
-    try:
-        process_message(db, request)
-        message = {
-            "request_id": request.request_id,
-            "status": "ready",
-            "url": f"{settings.url_prefix}api/pdf/download/{request.request_id}",
-        }
-        sync_redis.publish(f"task_updates:{request.request_id}", json.dumps(message))
-        log.info(
-            "Successfuly sent message with request_id: %s to Redis", request.request_id
-        )
-        return {"status": "completed", "request_id": request.request_id}
-    except Exception as exc:
-        log.exception("Task failed", exc_info=exc)
-        message = {
-            "request_id": request.request_id,
-            "status": "failed",
-            "reason": str(exc),
-        }
-        sync_redis.publish(f"task_updates:{request.request_id}", json.dumps(message))
-        raise self.retry(countdown=2**self.request.retries)
-    finally:
-        db.close()
+    with SessionLocal() as db:
+        try:
+            process_message(db, request)
+            message = {
+                "request_id": request.request_id,
+                "status": "ready",
+                "url": f"{settings.url_prefix}api/pdf/download/{request.request_id}",
+            }
+            sync_redis.publish(
+                f"task_updates:{request.request_id}", json.dumps(message)
+            )
+            log.info(
+                "Successfuly sent message with request_id: %s to Redis",
+                request.request_id,
+            )
+            return {"status": "completed", "request_id": request.request_id}
+        except Exception as exc:
+            log.exception("Task failed", exc_info=exc)
+            message = {
+                "request_id": request.request_id,
+                "status": "failed",
+                "reason": str(exc),
+            }
+            sync_redis.publish(
+                f"task_updates:{request.request_id}", json.dumps(message)
+            )
+            raise self.retry(countdown=2**self.request.retries)

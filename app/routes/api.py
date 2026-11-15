@@ -24,6 +24,11 @@ def generate_pdf(
 
 @router.get("/events/{request_id}")
 async def pdf_events(request_id: str):
+    """SSE-поток для ожидания результата генерации PDF.
+    Открывается сразу после отправки заявки на генерацию.
+    Сервер слушает Redis Pub/Sub канал `task_updates:{request_id}` и
+    отправляет данные, как только воркер завершит работу."""
+
     async def event_generator():
         pubsub = async_redis.pubsub()
         await pubsub.subscribe(f"task_updates:{request_id}")
