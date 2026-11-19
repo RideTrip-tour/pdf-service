@@ -1,6 +1,6 @@
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI, HTTPException, status
@@ -14,6 +14,7 @@ from app.crud.pdf_history import (
     search_user_history,
 )
 from app.dependencies.auth import get_current_user_id, get_optional_user_id
+from app.publishers.connectors import PublishResult
 from app.routes.api import router
 from app.schemas.contracts import (
     Accommodation,
@@ -392,8 +393,14 @@ def cleanup():
 def test_generate_tour_available_for_guest(monkeypatch):
     override_user(None)
 
-    mock_delay = MagicMock()
-    monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
+    mock_generate = AsyncMock()
+    mock_generate.return_value = PublishResult(
+        task_id="celery-task-1",
+        request_id="user-1",
+    )
+    monkeypatch.setattr(
+        "app.routes.api.task_publisher.generate_tour_pdf", mock_generate
+    )
 
     response = client.post(
         "/api/pdf/generate_tour",
@@ -404,14 +411,20 @@ def test_generate_tour_available_for_guest(monkeypatch):
     )
 
     assert response.status_code == 202
-    mock_delay.assert_called_once()
+    mock_generate.assert_called_once()
 
 
 def test_generate_tour_available_for_user(monkeypatch):
     override_user(42)
 
-    mock_delay = MagicMock()
-    monkeypatch.setattr("app.routes.api.generate_pdf_task.delay", mock_delay)
+    mock_generate = AsyncMock()
+    mock_generate.return_value = PublishResult(
+        task_id="celery-task-1",
+        request_id="user-1",
+    )
+    monkeypatch.setattr(
+        "app.routes.api.task_publisher.generate_tour_pdf", mock_generate
+    )
 
     response = client.post(
         "/api/pdf/generate_tour",
@@ -422,7 +435,7 @@ def test_generate_tour_available_for_user(monkeypatch):
     )
 
     assert response.status_code == 202
-    mock_delay.assert_called_once()
+    mock_generate.assert_called_once()
 
 
 def test_download_available_for_everyone():

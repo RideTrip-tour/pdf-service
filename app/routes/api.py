@@ -4,8 +4,8 @@ import json
 from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
 
+from app.publishers import task_publisher
 from app.redis.redis import async_redis
-from app.redis.tasks import generate_pdf_task
 from app.routes.query_params import AnonymDep, PDFServiceDep, UserDep
 from app.schemas.contracts import PdfRequest
 
@@ -13,13 +13,13 @@ router = APIRouter(prefix="/api/pdf", tags=["pdf"])
 
 
 @router.post("/generate_tour", status_code=202)
-def generate_pdf(
+async def generate_pdf(
     request: PdfRequest,
     user_id: AnonymDep,
 ):
     request.user_id = user_id
-    generate_pdf_task.delay(request.model_dump())
-    return {"request_id": request.request_id, "status": "pending"}
+    result = await task_publisher.generate_tour_pdf(request.model_dump(mode="json"))
+    return {"request_id": result.request_id, "status": "pending"}
 
 
 @router.get("/events/{request_id}")

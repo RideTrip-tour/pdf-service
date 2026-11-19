@@ -104,4 +104,3 @@ class PdfRequest(BaseModel):
     template_id: str = "tour"
     user_id: int | None = None
     payload: TourPdfPayload
-    callback: dict | None = None

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import fakeredis
 import pytest
+from celery.exceptions import Retry
 
 from app.redis.tasks import generate_pdf_task
 
@@ -22,14 +23,14 @@ def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
     )
 
     mock_publish = MagicMock()
-    monkeypatch.setattr("app.redis.tasks.sync_redis.publish", mock_publish)
+    monkeypatch.setattr("app.redis.tasks.event_publisher.task_ready", mock_publish)
 
     generate_pdf_task(request_data)
 
     mock_publish.assert_called_once()
     args, _ = mock_publish.call_args
-    assert "task_updates:task-1" in args[0]
-    assert '"status": "ready"' in args[1]
+    assert args[0] == "task-1"
+    assert "api/pdf/download/task-1" in args[1]
 
 
 def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
@@ -45,20 +46,16 @@ def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
     )
     monkeypatch.setattr("app.redis.tasks.SessionLocal", MagicMock())
 
-    mock_publish = MagicMock()
-    monkeypatch.setattr("app.redis.tasks.sync_redis.publish", mock_publish)
+    mock_task_failed = MagicMock()
+    monkeypatch.setattr("app.redis.tasks.event_publisher.task_failed", mock_task_failed)
 
-    from celery.exceptions import Retry
-
-    try:
+    with pytest.raises(Retry):
         generate_pdf_task(request_data)
-    except Retry:
-        pass
 
-    mock_publish.assert_called_once()
-    args, _ = mock_publish.call_args
-    assert "task_updates:task-2" in args[0]
-    assert '"status": "failed"' in args[1]
+    mock_task_failed.assert_called_once()
+    args, _ = mock_task_failed.call_args
+    assert args[0] == "task-2"
+    assert "Render error" in args[1]
 
 
 @pytest.mark.asyncio

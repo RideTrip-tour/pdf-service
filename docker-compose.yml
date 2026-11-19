@@ -24,7 +24,7 @@ services:
   # Celery worker for background task processing
   celery-worker:
     build: .
-    command: celery -A app.tasks.worker worker --loglevel=info --concurrency=4
+    command: celery -A app.redis.worker worker -Q pdf --loglevel=info --concurrency=4
     environment:
       DATABASE_URL: postgresql+psycopg://user:password@postgres:5432/pdf_db
       REDIS_URL: redis://redis:6379/0
