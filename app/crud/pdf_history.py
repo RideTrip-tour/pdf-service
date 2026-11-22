@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import UserPDFHistory
 from app.schemas.contracts import PdfRequest
+from app.schemas.internal import TourExtraData
 
 
 def get_pdf_by_request_id(session: Session, request_id: str) -> UserPDFHistory | None:
@@ -50,29 +51,26 @@ def search_user_history(
 
 def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None:
     """Сохраняет сгенерированный PDF и метаданные в историю."""
+    extra_data = TourExtraData(
+        route=request.payload.route.model_dump() if request.payload.route else None,
+        dates={
+            "date_from": str(request.payload.dates.date_from)
+            if request.payload.dates
+            else None,
+            "date_to": str(request.payload.dates.date_to)
+            if request.payload.dates
+            else None,
+        },
+        activity=[act for act in request.payload.activity]
+        if request.payload.activity
+        else None,
+    )
     statement = (
         insert(UserPDFHistory)
         .values(
             user_id=request.user_id,
             request_id=request.request_id,
-            extra_data={
-                "route": request.payload.route.model_dump()
-                if request.payload.route
-                else None,
-                "dates": {
-                    "date_from": str(request.payload.dates.date_from)
-                    if request.payload.dates
-                    else None,
-                    "date_to": str(request.payload.dates.date_to)
-                    if request.payload.dates
-                    else None,
-                }
-                if request.payload.dates
-                else None,
-                "activity": [act for act in request.payload.activity]
-                if request.payload.activity
-                else None,
-            },
+            extra_data=extra_data.to_dict(),
             file_data=pdf_bytes,
             created_at=datetime.now(UTC),
         )

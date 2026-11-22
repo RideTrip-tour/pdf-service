@@ -15,7 +15,7 @@ celery_app = Celery(
     "pdf_service_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.redis.tasks"],
+    include=["app.broker.tasks"],
 )
 
 celery_app.conf.update(

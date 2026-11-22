@@ -54,10 +54,10 @@ celery -A app.broker.celery_app worker --loglevel=info
 
 ```bash
 # собрать образы
-docker compose build
+docker compose -f docker-compose.local.yml build
 
 # запустить все контейнеры в фоне
-docker compose up -d
+docker compose -f docker-compose.local.yml up -d
 ```
 
 - Поднимется PostgreSQL (база данных).
@@ -69,8 +69,8 @@ docker compose up -d
 
 ```bash
 # логи Web (FastAPI)
-docker compose logs -f web
+docker compose -f docker-compose.local.yml logs -f web
 
 # логи Worker (Celery)
-docker compose logs -f celery-worker
+docker compose -f docker-compose.local.yml logs -f celery-worker
 ```

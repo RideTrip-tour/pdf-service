@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.crud.pdf_history import get_pdf_by_request_id, search_user_history
 from app.db.database import get_session
+from app.schemas.internal import TourExtraData
 
 log = logging.getLogger(__name__)
 
@@ -28,18 +29,13 @@ class PDFService:
         pdf_files = search_user_history(self.session, user_id, **filters)
         result = []
         for pdf in pdf_files:
-            extra = pdf.extra_data or {}
-            route = extra.get("route", {})
-            dates = extra.get("dates", {})
-            activity = extra.get("activity") or []
+            extra = TourExtraData.from_db(pdf.extra_data)
             result.append(
                 {
                     "request_id": pdf.request_id,
-                    "from_place": route.get("from_place"),
-                    "to_place": route.get("to_place"),
-                    "date_from": dates.get("date_from"),
-                    "date_to": dates.get("date_to"),
-                    "activity": ", ".join(activity) if activity else None,
+                    "route": extra.route,
+                    "dates": extra.dates,
+                    "activity": extra.activity,
                     "created_at": pdf.created_at,
                 }
             )

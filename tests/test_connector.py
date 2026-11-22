@@ -18,7 +18,7 @@ async def test_publish_success_returns_result():
 
     result = await connector.publish(
         queue="pdf",
-        task_name="app.redis.tasks.generate_pdf_task",
+        task_name="app.broker.tasks.generate_pdf_task",
         args=[{"request_id": "req-1", "payload": {"route": {}}}],
     )
 
@@ -26,7 +26,7 @@ async def test_publish_success_returns_result():
     assert result.task_id == "abc-123"
     assert result.request_id == "req-1"
     producer.send_task.assert_called_once_with(
-        "app.redis.tasks.generate_pdf_task",
+        "app.broker.tasks.generate_pdf_task",
         args=[{"request_id": "req-1", "payload": {"route": {}}}],
         kwargs={},
         queue="pdf",
@@ -54,14 +54,14 @@ async def test_publish_calls_send_task_in_thread():
     try:
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[{"request_id": "req-1"}],
         )
     finally:
         connectors_module.asyncio.to_thread = original
 
     assert called["func"] == producer.send_task
-    assert called["args"][0] == "app.redis.tasks.generate_pdf_task"
+    assert called["args"][0] == "app.broker.tasks.generate_pdf_task"
     assert called["kwargs"]["queue"] == "pdf"
 
 
@@ -73,7 +73,7 @@ async def test_publish_raises_if_request_id_missing():
     with pytest.raises(ValueError, match="request_id is required"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[{"payload": {"route": {}}}],
         )
 
@@ -88,7 +88,7 @@ async def test_publish_raises_if_args_empty():
     with pytest.raises(ValueError, match="request_id is required"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[],
         )
 
@@ -103,7 +103,7 @@ async def test_publish_raises_if_args_none():
     with pytest.raises(ValueError, match="request_id is required"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=None,
         )
 
@@ -118,7 +118,7 @@ async def test_publish_raises_if_first_arg_not_dict():
     with pytest.raises(ValueError, match="request_id is required"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=["not-a-dict"],
         )
 
@@ -134,7 +134,7 @@ async def test_publish_propagates_send_task_exception():
     with pytest.raises(RuntimeError, match="redis down"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[{"request_id": "req-1"}],
         )
 
@@ -150,12 +150,12 @@ async def test_publish_logs_and_reraises(caplog):
     with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[{"request_id": "req-1"}],
         )
 
     assert "Failed to publish" in caplog.text
-    assert "app.redis.tasks.generate_pdf_task" in caplog.text
+    assert "app.broker.tasks.generate_pdf_task" in caplog.text
     assert "req-1" in caplog.text
 
 
@@ -167,7 +167,7 @@ async def test_publish_works_with_kwargs_only():
     with pytest.raises(ValueError, match="request_id is required"):
         await connector.publish(
             queue="pdf",
-            task_name="app.redis.tasks.generate_pdf_task",
+            task_name="app.broker.tasks.generate_pdf_task",
             args=[],
             kwargs={"request_id": "req-1"},
         )

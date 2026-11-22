@@ -297,7 +297,7 @@ def test_get_history_returns_list_of_dicts(monkeypatch):
 
     assert len(result) == 1
     assert result[0]["request_id"] == "1"
-    assert result[0]["from_place"] == "Москва"
+    assert result[0].get("route").get("from_place") == "Москва"
     assert "file_data" not in result[0]
 
 
