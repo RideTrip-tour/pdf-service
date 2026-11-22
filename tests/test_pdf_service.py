@@ -46,8 +46,10 @@ class FakeSession:
         raise AssertionError("FakeSession.execute должен быть замокан")
 
 
-def test_save_guest_history_skipped():
+def test_save_guest_history_skipped(monkeypatch):
     session = FakeSession()
+    mock_execute = MagicMock()
+    monkeypatch.setattr(session, "execute", mock_execute)
     request = PdfRequest(
         request_id="guest-1",
         user_id=None,
@@ -56,12 +58,14 @@ def test_save_guest_history_skipped():
 
     save_pdf_history(session, request, b"fake pdf")
 
-    assert len(session.added_objects) == 1
+    mock_execute.assert_called_once()
     assert session.commits == 1
 
 
-def test_save_user_history():
+def test_save_user_history(monkeypatch):
     session = FakeSession()
+    mock_execute = MagicMock()
+    monkeypatch.setattr(session, "execute", mock_execute)
     request = PdfRequest(
         request_id="user-1",
         user_id=42,
@@ -73,13 +77,13 @@ def test_save_user_history():
 
     save_pdf_history(session, request, b"fake pdf")
 
-    assert len(session.added_objects) == 1
+    mock_execute.assert_called_once()
     assert session.commits == 1
 
-    record = session.added_objects[0]
-    assert record.user_id == 42
-    assert record.from_place == "Москва"
-    assert record.date_from == date(2025, 1, 1)
+    call_args = mock_execute.call_args[0][0]
+    compiled = str(call_args.compile(dialect=postgresql.dialect()))
+    assert "INSERT INTO user_pdf_history" in compiled
+    assert "ON CONFLICT" in compiled
 
 
 def test_process_message_calls_render_and_save(monkeypatch):
@@ -184,10 +188,9 @@ def test_search_user_history_with_filters(monkeypatch):
 
     sql = captured["sql"]
     assert "user_pdf_history.user_id = " in sql
-    assert "user_pdf_history.from_place = " in sql
-    assert "user_pdf_history.to_place = " in sql
-    assert "user_pdf_history.activity LIKE " in sql
-    assert "activity" in sql
+    assert "extra_data -> " in sql
+    assert "->> " in sql
+    assert "? %(param_5)s" in sql
 
 
 def test_search_user_history_returns_list(monkeypatch):
@@ -278,11 +281,11 @@ def test_get_history_returns_list_of_dicts(monkeypatch):
 
     fake_record_1 = SimpleNamespace(
         request_id="1",
-        from_place="Москва",
-        to_place="Сочи",
-        date_from="2025-01-01",
-        date_to="2025-01-10",
-        activity="лыжи",
+        extra_data={
+            "route": {"from_place": "Москва", "to_place": "Сочи"},
+            "dates": {"date_from": "2025-01-01", "date_to": "2025-01-10"},
+            "activity": ["лыжи"],
+        },
         created_at="2025-01-01",
     )
 
@@ -399,7 +402,7 @@ def test_generate_tour_available_for_guest(monkeypatch):
         request_id="user-1",
     )
     monkeypatch.setattr(
-        "app.routes.api.task_publisher.generate_tour_pdf", mock_generate
+        "app.routes.pdf.task_publisher.generate_tour_pdf", mock_generate
     )
 
     response = client.post(
@@ -423,7 +426,7 @@ def test_generate_tour_available_for_user(monkeypatch):
         request_id="user-1",
     )
     monkeypatch.setattr(
-        "app.routes.api.task_publisher.generate_tour_pdf", mock_generate
+        "app.routes.pdf.task_publisher.generate_tour_pdf", mock_generate
     )
 
     response = client.post(

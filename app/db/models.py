@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import Date, DateTime, LargeBinary, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, LargeBinary, String, func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 

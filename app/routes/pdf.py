@@ -1,15 +1,15 @@
 import asyncio
 import json
 
+from celery.result import AsyncResult
 from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
-from celery.result import AsyncResult
 
-from app.publishers import task_publisher
 from app.broker.connection import async_redis
+from app.broker.worker import celery_app
+from app.publishers import task_publisher
 from app.routes.dependencies import AnonymDep, PDFServiceDep, UserDep
 from app.schemas.contracts import PdfRequest
-from app.broker.worker import celery_app
 from config import settings
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
@@ -22,7 +22,10 @@ async def generate_pdf(
 ):
     request.user_id = user_id
     result = await task_publisher.generate_tour_pdf(request.model_dump(mode="json"))
-    return {"request_id": result.request_id, "task_id": result.task_id ,"status": "pending"}
+    return {
+        "request_id": result.request_id,
+        "status": "pending",
+    }
 
 
 @router.get("status_pdf/{request_id}")
@@ -36,6 +39,7 @@ async def get_status(request_id: str):
     if status == "FAILURE":
         response["reason"] = str(task.result) if task.result else "Unknown error"
     return response
+
 
 @router.get("/events/{request_id}")
 async def pdf_events(request_id: str):

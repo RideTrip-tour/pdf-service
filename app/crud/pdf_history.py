@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select, text
-from sqlalchemy.orm import Session
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
 from app.db.models import UserPDFHistory
 from app.schemas.contracts import PdfRequest
@@ -43,32 +43,40 @@ def search_user_history(
             UserPDFHistory.extra_data["dates"]["date_to"].astext <= date_to
         )
     if activity:
-        query = query.where(
-            UserPDFHistory.extra_data["activity"].op("?")(activity)
-        )
+        query = query.where(UserPDFHistory.extra_data["activity"].op("?")(activity))
 
     return list(session.execute(query).scalars().all())
 
 
 def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None:
     """Сохраняет сгенерированный PDF и метаданные в историю."""
-    existing = get_pdf_by_request_id(db, request.request_id)
-    if existing:
-        return
-
-    statement = insert(UserPDFHistory).values(
-        user_id=request.user_id,
-        request_id=request.request_id,
-        extra_data={
-            "route": request.payload.route.model_dump() if request.payload.route else None,
-            "dates": {
-                "date_from": str(request.payload.dates.date_from) if request.payload.dates else None,
-                "date_to": str(request.payload.dates.date_to) if request.payload.dates else None,
-            } if request.payload.dates else None,
-            "activity": [act for act in request.payload.activity] if request.payload.activity else None
-        },
-        file_data=pdf_bytes,
-        created_at=datetime.now(UTC),
-    ).on_conflict_do_nothing(index_elements=["request_id"])
+    statement = (
+        insert(UserPDFHistory)
+        .values(
+            user_id=request.user_id,
+            request_id=request.request_id,
+            extra_data={
+                "route": request.payload.route.model_dump()
+                if request.payload.route
+                else None,
+                "dates": {
+                    "date_from": str(request.payload.dates.date_from)
+                    if request.payload.dates
+                    else None,
+                    "date_to": str(request.payload.dates.date_to)
+                    if request.payload.dates
+                    else None,
+                }
+                if request.payload.dates
+                else None,
+                "activity": [act for act in request.payload.activity]
+                if request.payload.activity
+                else None,
+            },
+            file_data=pdf_bytes,
+            created_at=datetime.now(UTC),
+        )
+        .on_conflict_do_nothing(index_elements=["request_id"])
+    )
     db.execute(statement)
     db.commit()

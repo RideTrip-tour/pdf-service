@@ -30,6 +30,7 @@ async def test_publish_success_returns_result():
         args=[{"request_id": "req-1", "payload": {"route": {}}}],
         kwargs={},
         queue="pdf",
+        task_id="req-1",
     )
 
 

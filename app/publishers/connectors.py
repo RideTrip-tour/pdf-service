@@ -52,7 +52,7 @@ class CeleryConnector:
                 args=args,
                 kwargs=kwargs,
                 queue=queue,
-                task_id=request_id
+                task_id=request_id,
             )
             return PublishResult(task_id=str(result.id), request_id=str(request_id))
         except Exception:

@@ -22,5 +22,9 @@ class EventPublisher:
     def task_processing(self, request_id: str, reason: str):
         self._connector.publish_event(
             channel=CHANNEL.format(request_id=request_id),
-            payload={"request_id": request_id, "status": "processing", "reason": reason}
+            payload={
+                "request_id": request_id,
+                "status": "processing",
+                "reason": reason,
+            },
         )

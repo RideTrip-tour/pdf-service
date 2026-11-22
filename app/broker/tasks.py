@@ -1,8 +1,8 @@
 import logging
 
+from app.broker.worker import celery_app
 from app.db.database import SessionLocal
 from app.publishers import event_publisher
-from app.broker.worker import celery_app
 from app.schemas.contracts import PdfRequest
 from app.service.save import process_message
 from config import settings
@@ -26,11 +26,13 @@ def generate_pdf_task(self, request_data: dict):
         except Exception as exc:
             log.exception(
                 "Task failed (attempt %s/%s)",
-                self.request.retries + 1, self.max_retries + 1
+                self.request.retries + 1,
+                self.max_retries + 1,
             )
             if self.request.retries < self.max_retries:
                 event_publisher.task_processing(
-                    request.request_id, f"Retry {self.request.retries + 1}/{self.max_retries}: {str(exc)}"
+                    request.request_id,
+                    f"Retry {self.request.retries + 1}/{self.max_retries}: {exc!s}",
                 )
             else:
                 event_publisher.task_failed(request.request_id, str(exc))

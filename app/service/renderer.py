@@ -9,7 +9,7 @@ TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 env = Environment(
     loader=FileSystemLoader(str(TEMPLATES_DIR)),
-    autoescape=select_autoescape(["html", "xml", "xhtml"])
+    autoescape=select_autoescape(["html", "xml", "xhtml"]),
 )
 
 

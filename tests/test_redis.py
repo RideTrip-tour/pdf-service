@@ -15,15 +15,15 @@ def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
         "payload": {"route": {"from_place": "A", "to_place": "B"}},
     }
 
-    monkeypatch.setattr("app.redis.tasks.process_message", MagicMock())
+    monkeypatch.setattr("app.broker.tasks.process_message", MagicMock())
 
     mock_session = MagicMock()
     monkeypatch.setattr(
-        "app.redis.tasks.SessionLocal", MagicMock(return_value=mock_session)
+        "app.broker.tasks.SessionLocal", MagicMock(return_value=mock_session)
     )
 
     mock_publish = MagicMock()
-    monkeypatch.setattr("app.redis.tasks.event_publisher.task_ready", mock_publish)
+    monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_publish)
 
     generate_pdf_task(request_data)
 
@@ -41,19 +41,21 @@ def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
     }
 
     monkeypatch.setattr(
-        "app.redis.tasks.process_message",
+        "app.broker.tasks.process_message",
         MagicMock(side_effect=Exception("Render error")),
     )
-    monkeypatch.setattr("app.redis.tasks.SessionLocal", MagicMock())
+    monkeypatch.setattr("app.broker.tasks.SessionLocal", MagicMock())
 
-    mock_task_failed = MagicMock()
-    monkeypatch.setattr("app.redis.tasks.event_publisher.task_failed", mock_task_failed)
+    mock_task_processing = MagicMock()
+    monkeypatch.setattr(
+        "app.broker.tasks.event_publisher.task_processing", mock_task_processing
+    )
 
     with pytest.raises(Retry):
         generate_pdf_task(request_data)
 
-    mock_task_failed.assert_called_once()
-    args, _ = mock_task_failed.call_args
+    mock_task_processing.assert_called_once()
+    args, _ = mock_task_processing.call_args
     assert args[0] == "task-2"
     assert "Render error" in args[1]
 
