@@ -39,7 +39,9 @@ class CeleryConnector:
         args = args or []
         kwargs = kwargs or {}
         request_id = None
-        if args and isinstance(args[0], dict):
+        if kwargs and isinstance(kwargs.get("request_data"), dict):
+            request_id = kwargs["request_data"].get("request_id")
+        if not request_id and args and isinstance(args[0], dict):
             request_id = args[0].get("request_id")
         if not request_id:
             raise ValueError("request_id is required")
@@ -50,6 +52,7 @@ class CeleryConnector:
                 args=args,
                 kwargs=kwargs,
                 queue=queue,
+                task_id=request_id
             )
             return PublishResult(task_id=str(result.id), request_id=str(request_id))
         except Exception:

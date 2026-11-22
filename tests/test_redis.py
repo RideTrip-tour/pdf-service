@@ -5,7 +5,7 @@ import fakeredis
 import pytest
 from celery.exceptions import Retry
 
-from app.redis.tasks import generate_pdf_task
+from app.broker.tasks import generate_pdf_task
 
 
 def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):

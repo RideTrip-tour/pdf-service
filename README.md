@@ -35,3 +35,42 @@
 *   **Авторизованный пользователь:** Может сгенерировать, скачать и посмотреть историю своих поездок.
 
 Для авторизации используется заголовок `X-User-ID` (или `X-User-Claims`).
+
+## Локальный запуск 
+**Web (FastAPI)** - этот процесс принимает HTTP-запросы, валидирует данные, управляет SSE-соединениями и отдает готовые PDF. Он работает как обычный веб-сервер.
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+# В docker-compose.yml это прописано как command для сервиса web.
+```
+
+**Worker (Celery)** - этот процесс не имеет HTTP-портов. Он слушает очередь Redis (брокер), берет задачи на генерацию PDF, рендерит их через WeasyPrint и сохраняет результат в PostgreSQL.
+
+```bash
+celery -A app.broker.celery_app worker --loglevel=info
+```
+
+## Запуск через Docker Compose
+
+```bash
+# собрать образы
+docker compose build
+
+# запустить все контейнеры в фоне
+docker compose up -d
+```
+
+- Поднимется PostgreSQL (база данных).
+- Поднимется Redis (брокер задач и Pub/Sub).
+- Запустится Web (FastAPI на порту 8000).
+- Запустится Worker (Celery, который будет ждать задачи).
+
+## Проверка работоспособности
+
+```bash
+# логи Web (FastAPI)
+docker compose logs -f web
+
+# логи Worker (Celery)
+docker compose logs -f celery-worker
+```

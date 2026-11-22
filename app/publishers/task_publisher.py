@@ -7,5 +7,5 @@ class TaskPublisher:
 
     async def generate_tour_pdf(self, request: dict) -> PublishResult:
         return await self._connector.publish(
-            queue="pdf", task_name="generate_tour_pdf", args=[request]
+            queue="pdf", task_name="generate_tour_pdf", kwargs={"request_data": request}
         )

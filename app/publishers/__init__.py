@@ -3,7 +3,7 @@ import redis
 from app.publishers.connectors import CeleryConnector, RedisEventConnector
 from app.publishers.event_publisher import EventPublisher
 from app.publishers.task_publisher import TaskPublisher
-from app.redis.worker import celery_app
+from app.broker.worker import celery_app
 from config import settings
 
 celery_connector = CeleryConnector(producer=celery_app)

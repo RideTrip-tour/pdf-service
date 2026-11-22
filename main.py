@@ -7,7 +7,7 @@ from internal_middleware import (
     build_user_context_middleware,
 )
 
-from app.routes.api import router
+from app.routes.pdf import router
 from app.utils.logging import LOGGING_CONFIG
 from config import settings
 

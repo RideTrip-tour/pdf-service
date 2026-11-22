@@ -15,10 +15,17 @@ def _get_id_from_state(request: Request, key: str) -> int | None:
         return None
 
     current_id = user.get(key) or getattr(request.state, key, None)
-    if current_id in (None, ""):
+    if current_id in (None, "", " "):
         logger.warning("Missing required field '%s' in request.state.user", key)
         return None
-    return int(current_id)
+    try:
+        return int(current_id)
+    except ValueError:
+        logger.warning("Invalid '%s' format: %s", key, current_id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid format",
+        )
 
 
 def get_optional_user_id(request: Request) -> int | None:

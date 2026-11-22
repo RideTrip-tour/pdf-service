@@ -1,3 +1,4 @@
+from datetime import date
 import logging
 
 from fastapi import Depends, HTTPException, status
@@ -22,21 +23,25 @@ class PDFService:
             )
         return pdf_file.file_data
 
-    def get_history(self, user_id: int, **filters):
+    def get_history(self, user_id: int, **filters) -> list[dict[str, str | date]]:
         """Returns list of trips for history (without bytes)."""
         pdf_files = search_user_history(self.session, user_id, **filters)
-        return [
-            {
-                "request_id": pdf_file.request_id,
-                "from_place": pdf_file.from_place,
-                "to_place": pdf_file.to_place,
-                "date_from": pdf_file.date_from,
-                "date_to": pdf_file.date_to,
-                "activity": pdf_file.activity,
-                "created_at": pdf_file.created_at,
-            }
-            for pdf_file in pdf_files
-        ]
+        result = []
+        for pdf in pdf_files:
+            extra = pdf.extra_data or {}
+            route = extra.get("route", {})
+            dates = extra.get("dates", {})
+            activity = extra.get("activity", {})
+            result.append({
+                "request_id": pdf.request_id,
+                "from_place": route.get("from_place"),
+                "to_place": route.get("to_place"),
+                "date_from": dates.get("date_from"),
+                "date_to": dates.get("date_to"),
+                "activity": activity.get("activity"),
+                "created_at": pdf.created_at,
+            })
+        return result
 
 
 def get_pdf_service(

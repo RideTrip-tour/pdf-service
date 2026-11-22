@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models import UserPDFHistory
 from app.schemas.contracts import PdfRequest
@@ -26,41 +27,48 @@ def search_user_history(
     query = select(UserPDFHistory).where(UserPDFHistory.user_id == user_id)
 
     if from_place:
-        query = query.where(UserPDFHistory.from_place == from_place)
+        query = query.where(
+            UserPDFHistory.extra_data["route"]["from_place"].astext == from_place
+        )
     if to_place:
-        query = query.where(UserPDFHistory.to_place == to_place)
+        query = query.where(
+            UserPDFHistory.extra_data["route"]["to_place"].astext == to_place
+        )
     if date_from:
-        query = query.where(UserPDFHistory.date_from == date_from)
+        query = query.where(
+            UserPDFHistory.extra_data["dates"]["date_from"].astext >= date_from
+        )
     if date_to:
-        query = query.where(UserPDFHistory.date_to == date_to)
+        query = query.where(
+            UserPDFHistory.extra_data["dates"]["date_to"].astext <= date_to
+        )
     if activity:
-        query = query.where(UserPDFHistory.activity.like(f"%{activity}%"))
+        query = query.where(
+            UserPDFHistory.extra_data["activity"].op("?")(activity)
+        )
 
     return list(session.execute(query).scalars().all())
 
 
 def save_pdf_history(db: Session, request: PdfRequest, pdf_bytes: bytes) -> None:
     """Сохраняет сгенерированный PDF и метаданные в историю."""
-    payload = request.payload
+    existing = get_pdf_by_request_id(db, request.request_id)
+    if existing:
+        return
 
-    from_place = payload.route.from_place if payload.route else None
-    to_place = payload.route.to_place if payload.route else None
-    date_from = payload.dates.date_from if payload.dates else None
-    date_to = payload.dates.date_to if payload.dates else None
-    activity = (
-        ", ".join(act for act in payload.activity if act) if payload.activity else None
-    )
-
-    record = UserPDFHistory(
+    statement = insert(UserPDFHistory).values(
         user_id=request.user_id,
         request_id=request.request_id,
-        from_place=from_place,
-        to_place=to_place,
-        date_from=date_from,
-        date_to=date_to,
-        activity=activity,
+        extra_data={
+            "route": request.payload.route.model_dump() if request.payload.route else None,
+            "dates": {
+                "date_from": str(request.payload.dates.date_from) if request.payload.dates else None,
+                "date_to": str(request.payload.dates.date_to) if request.payload.dates else None,
+            } if request.payload.dates else None,
+            "activity": [act for act in request.payload.activity] if request.payload.activity else None
+        },
         file_data=pdf_bytes,
         created_at=datetime.now(UTC),
-    )
-    db.add(record)
+    ).on_conflict_do_nothing(index_elements=["request_id"])
+    db.execute(statement)
     db.commit()

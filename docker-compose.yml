@@ -1,4 +1,4 @@
-# Full stack: FastAPI + PostgreSQL + Redis + Celery
+# локальный запуск
 services:
   # FastAPI web application
   web:

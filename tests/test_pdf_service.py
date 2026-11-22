@@ -15,7 +15,7 @@ from app.crud.pdf_history import (
 )
 from app.dependencies.auth import get_current_user_id, get_optional_user_id
 from app.publishers.connectors import PublishResult
-from app.routes.api import router
+from app.routes.pdf import router
 from app.schemas.contracts import (
     Accommodation,
     Dates,
