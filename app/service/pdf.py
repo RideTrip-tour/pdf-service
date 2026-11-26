@@ -1,11 +1,11 @@
 import logging
-from datetime import date
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.crud.pdf_history import get_pdf_by_request_id, search_user_history
 from app.db.database import get_session
+from app.schemas.contracts import TourPdfResponce
 from app.schemas.internal import TourExtraData
 
 log = logging.getLogger(__name__)
@@ -24,20 +24,20 @@ class PDFService:
             )
         return pdf_file.file_data
 
-    def get_history(self, user_id: int, **filters) -> list[dict[str, str | date]]:
+    def get_history(self, user_id: int, **filters) -> list[TourPdfResponce]:
         """Returns list of trips for history (without bytes)."""
         pdf_files = search_user_history(self.session, user_id, **filters)
         result = []
         for pdf in pdf_files:
             extra = TourExtraData.from_db(pdf.extra_data)
             result.append(
-                {
-                    "request_id": pdf.request_id,
-                    "route": extra.route,
-                    "dates": extra.dates,
-                    "activity": extra.activity,
-                    "created_at": pdf.created_at,
-                }
+                TourPdfResponce(
+                    request_id=pdf.request_id,
+                    route=extra.route,
+                    dates=extra.dates,
+                    activity=extra.activity,
+                    created_at=pdf.created_at,
+                )
             )
         return result
 

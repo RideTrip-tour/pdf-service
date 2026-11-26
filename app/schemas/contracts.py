@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
@@ -16,9 +16,7 @@ class Dates(BaseModel):
 
 class Accommodation(BaseModel):
     name: str | None = Field(None, description="Название отеля для отображения")
-    partner_url: str | None = Field(
-        default=None, description="Ссылка на партнёра (Яндекс Путешествия)"
-    )
+    partner_url: str | None = Field(default=None, description="Ссылка на партнёра")
 
 
 class TransferType(str, Enum):
@@ -97,6 +95,14 @@ class TourPdfPayload(BaseModel):
         if not any(check_fields):
             raise ValueError("At least one parameter requireed.")
         return self
+
+
+class TourPdfResponce(BaseModel):
+    request_id: str
+    route: dict | None = None
+    dates: dict | None = None
+    activity: list[str] | None = None
+    created_at: datetime
 
 
 class PdfRequest(BaseModel):
