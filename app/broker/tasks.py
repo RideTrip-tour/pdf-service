@@ -3,7 +3,8 @@ import logging
 from sqlalchemy.exc import OperationalError
 
 from app.broker.worker import celery_app
-from app.constants import TASK_NAME
+from app.constants import DOWNLOAD_URL, TASK_NAME
+from app.crud.pdf_history import get_pdf_by_request_id
 from app.db.database import SessionLocal
 from app.exceptions import PermanentError
 from app.publishers import event_publisher
@@ -21,12 +22,23 @@ def generate_pdf_task(self, request_data: dict):
     request = PdfRequest(**request_data)
     with SessionLocal() as db:
         try:
-            process_message(db, request)
-            url = f"{settings.url_prefix}api/pdf/download/{request.request_id}"
-            event_publisher.task_ready(request.request_id, url)
-            log.info(
-                "Successfuly sent message with request_id: %s to Redis",
+            existing_pdf = get_pdf_by_request_id(db, request.request_id)
+            if existing_pdf:
+                log.info(
+                    "PDF with request_id: %s already exists, skipping",
+                    request.request_id,
+                )
+            else:
+                process_message(db, request)
+                log.info(
+                    "Successfuly sent message with request_id: %s to Redis",
+                    request.request_id,
+                )
+            event_publisher.task_ready(
                 request.request_id,
+                DOWNLOAD_URL.format(
+                    url_prefix=settings.url_prefix, request_id=request.request_id
+                ),
             )
             return {"status": "completed", "request_id": request.request_id}
         except RETRYABLE_EXCEPTIONS as exc:

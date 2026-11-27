@@ -16,9 +16,9 @@ class EventConsumer:
     async def wait_for_result(
         self, request_id: str, max_attempts: int = 30, time_sleep: float = 1.0
     ) -> dict | None:
+        """Looks for the result in the cache, 30 attempts with 1.0 sec delay = 30 seconds."""
         for _ in range(max_attempts):
             data = await self._client.get(CHANNEL.format(request_id=request_id))
-            log.info("DEBUG: data is here %s, type: %s", data, type(data))
             if data:
                 return json.loads(data)
             await asyncio.sleep(time_sleep)
