@@ -6,5 +6,7 @@ class PDFServiceError(Exception):
 
 
 class PermanentError(PDFServiceError):
-    def __init__(self, message: str, client_message: str = "Couldn't process a message"):
+    def __init__(
+        self, message: str, client_message: str = "Couldn't process a message"
+    ):
         super().__init__(message, client_message)

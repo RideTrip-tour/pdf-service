@@ -3,9 +3,9 @@ import redis.asyncio as aioredis
 
 from app.broker.worker import celery_app
 from app.publishers.connectors import CeleryConnector, RedisEventConnector
+from app.publishers.event_consumer import EventConsumer
 from app.publishers.event_publisher import EventPublisher
 from app.publishers.task_publisher import TaskPublisher
-from app.publishers.event_consumer import EventConsumer
 from config import settings
 
 celery_connector = CeleryConnector(producer=celery_app)

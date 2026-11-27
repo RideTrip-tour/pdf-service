@@ -1,5 +1,5 @@
-import json
 import asyncio
+import json
 import logging
 
 import redis.asyncio as aioredis
@@ -23,4 +23,3 @@ class EventConsumer:
                 return json.loads(data)
             await asyncio.sleep(time_sleep)
         return None
-

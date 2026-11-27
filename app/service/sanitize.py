@@ -17,9 +17,7 @@ def sanitize_payload(payload: TourPdfPayload):
         payload.route.to_place = sanitize_string(payload.route.to_place)
 
     if payload.activity:
-        payload.activity = [
-            sanitize_string(activity) for activity in payload.activity
-        ]
+        payload.activity = [sanitize_string(activity) for activity in payload.activity]
 
     if payload.accommodation:
         payload.accommodation.name = sanitize_string(payload.accommodation.name)

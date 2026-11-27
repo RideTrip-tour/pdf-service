@@ -1,5 +1,5 @@
-from app.publishers.connectors import BaseConnector, PublishResult
 from app.constants import TASK_NAME
+from app.publishers.connectors import BaseConnector, PublishResult
 
 
 class TaskPublisher:

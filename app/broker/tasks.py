@@ -1,25 +1,20 @@
 import logging
 
-from sqlalchemy.exc import OperationalError, IntegrityError
-from pydantic import ValidationError
+from sqlalchemy.exc import OperationalError
 
 from app.broker.worker import celery_app
+from app.constants import TASK_NAME
 from app.db.database import SessionLocal
+from app.exceptions import PermanentError
 from app.publishers import event_publisher
 from app.schemas.contracts import PdfRequest
 from app.service.save import process_message
 from config import settings
-from app.constants import TASK_NAME
-from app.exceptions import PermanentError
-from app.crud.pdf_history import get_pdf_by_request_id
 
 log = logging.getLogger(__name__)
 
-RETRYABLE_EXCEPTIONS = (
-    OperationalError,
-    ConnectionError,
-    TimeoutError
-)
+RETRYABLE_EXCEPTIONS = (OperationalError, ConnectionError, TimeoutError)
+
 
 @celery_app.task(bind=True, max_retries=3, name=TASK_NAME)
 def generate_pdf_task(self, request_data: dict):
@@ -43,10 +38,10 @@ def generate_pdf_task(self, request_data: dict):
                 )
             raise self.retry(countdown=2**self.request.retries)
         except PermanentError as exc:
-            log.error("Task failed", exc.message, exc_info=True)
+            log.exception("Task failed")
             event_publisher.task_failed(request.request_id, exc.client_message)
             raise
-        except Exception as exc:
-            log.exception("Unexpected error", exc)
+        except Exception:
+            log.exception("Unexpected error")
             event_publisher.task_failed(request.request_id, "Внутренняя ошибка сервера")
             raise

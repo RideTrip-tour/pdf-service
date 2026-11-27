@@ -5,12 +5,13 @@ from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
 
 from app.broker.worker import celery_app
-from app.publishers import task_publisher, event_consumer
+from app.publishers import event_consumer, task_publisher
 from app.routes.dependencies import AnonymDep, PDFServiceDep, UserDep
 from app.schemas.contracts import PdfRequest
 from config import settings
 
 router = APIRouter(prefix="/api/pdf", tags=["pdf"])
+
 
 @router.post("/generate_tour", status_code=202)
 async def generate_pdf(
@@ -48,9 +49,10 @@ async def pdf_events(request_id: str):
     async def event_generator():
         result = await event_consumer.wait_for_result(request_id)
         if result is None:
-            yield f"data: {json.dumps({"status": "failed", "reason": "timeout"})}\n\n"
+            yield f"data: {json.dumps({'status': 'failed', 'reason': 'timeout'})}\n\n"
         else:
             yield f"data: {json.dumps(result)}\n\n"
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",

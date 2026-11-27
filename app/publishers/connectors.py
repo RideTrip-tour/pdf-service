@@ -73,7 +73,5 @@ class RedisEventConnector:
 
     def publish_event(self, request_id: str, payload: dict, ttl: int = 3600):
         self._client.set(
-            CHANNEL.format(request_id=request_id),
-            json.dumps(payload),
-            ex=ttl
+            CHANNEL.format(request_id=request_id), json.dumps(payload), ex=ttl
         )

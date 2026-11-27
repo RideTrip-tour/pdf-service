@@ -1,5 +1,4 @@
 from app.publishers.connectors import RedisEventConnector
-from app.constants import CHANNEL
 
 
 class EventPublisher:
