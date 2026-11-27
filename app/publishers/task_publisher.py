@@ -1,4 +1,5 @@
 from app.publishers.connectors import BaseConnector, PublishResult
+from app.constants import TASK_NAME
 
 
 class TaskPublisher:
@@ -7,5 +8,5 @@ class TaskPublisher:
 
     async def generate_tour_pdf(self, request: dict) -> PublishResult:
         return await self._connector.publish(
-            queue="pdf", task_name="generate_tour_pdf", kwargs={"request_data": request}
+            queue="pdf", task_name=TASK_NAME, kwargs={"request_data": request}
         )

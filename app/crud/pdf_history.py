@@ -2,11 +2,13 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import UserPDFHistory
 from app.schemas.contracts import PdfRequest
 from app.schemas.internal import TourExtraData
+from app.exceptions import PermanentError
 
 
 def get_pdf_by_request_id(session: Session, request_id: str) -> UserPDFHistory | None:
