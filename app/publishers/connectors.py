@@ -7,6 +7,8 @@ import redis
 from celery import Celery
 from pydantic import BaseModel
 
+from app.constants import CHANNEL
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,5 +71,7 @@ class RedisEventConnector:
     def __init__(self, client: redis.Redis):
         self._client = client
 
-    def publish_event(self, channel: str, payload: dict):
-        self._client.publish(channel, json.dumps(payload))
+    def publish_event(self, request_id: str, payload: dict, ttl: int = 3600):
+        self._client.set(
+            CHANNEL.format(request_id=request_id), json.dumps(payload), ex=ttl
+        )

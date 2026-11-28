@@ -1,11 +1,12 @@
-import asyncio
-from unittest.mock import MagicMock
+import json
+import uuid
+from unittest.mock import AsyncMock, MagicMock
 
-import fakeredis
 import pytest
-from celery.exceptions import Retry
 
 from app.broker.tasks import generate_pdf_task
+from app.exceptions import PermanentError
+from app.publishers.event_consumer import EventConsumer
 
 
 def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
@@ -14,72 +15,69 @@ def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
         "user_id": 1,
         "payload": {"route": {"from_place": "A", "to_place": "B"}},
     }
-
-    monkeypatch.setattr("app.broker.tasks.process_message", MagicMock())
-
-    mock_session = MagicMock()
     monkeypatch.setattr(
-        "app.broker.tasks.SessionLocal", MagicMock(return_value=mock_session)
+        "app.broker.tasks.handle_generate_pdf",
+        MagicMock(return_value={"status": "completed"}),
     )
-
-    mock_publish = MagicMock()
-    monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_publish)
-
-    generate_pdf_task(request_data)
-
-    mock_publish.assert_called_once()
-    args, _ = mock_publish.call_args
-    assert args[0] == "task-1"
-    assert "api/pdf/download/task-1" in args[1]
-
-
-def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
-    request_data = {
-        "request_id": "task-2",
-        "user_id": 1,
-        "payload": {"route": {"from_place": "A", "to_place": "B"}},
-    }
-
-    monkeypatch.setattr(
-        "app.broker.tasks.process_message",
-        MagicMock(side_effect=Exception("Render error")),
-    )
-    monkeypatch.setattr("app.broker.tasks.SessionLocal", MagicMock())
-
     mock_task_processing = MagicMock()
     monkeypatch.setattr(
         "app.broker.tasks.event_publisher.task_processing", mock_task_processing
     )
+    mock_task_ready = MagicMock()
+    monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_task_ready)
+    generate_pdf_task(request_data)
+    mock_task_ready.assert_called_once()
 
-    with pytest.raises(Retry):
-        generate_pdf_task(request_data)
 
-    mock_task_processing.assert_called_once()
-    args, _ = mock_task_processing.call_args
-    assert args[0] == "task-2"
-    assert "Render error" in args[1]
+def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
+    request_data = {
+        "request_id": f"task-{uuid.uuid4().hex[:8]}",
+        "user_id": 1,
+        "payload": {"route": {"from_place": "A", "to_place": "B"}},
+    }
+    monkeypatch.setattr(
+        "app.broker.tasks.handle_generate_pdf",
+        MagicMock(side_effect=PermanentError("Render error", "Bad data")),
+    )
+    mock_task_processing = MagicMock()
+    monkeypatch.setattr(
+        "app.broker.tasks.event_publisher.task_processing", mock_task_processing
+    )
+    mock_task_failed = MagicMock()
+    monkeypatch.setattr(
+        "app.broker.tasks.event_publisher.task_failed", mock_task_failed
+    )
+    result = generate_pdf_task.apply(args=[request_data])
+    assert result.failed() is True
+    mock_task_failed.assert_called_once_with(request_data["request_id"], "Bad data")
 
 
 @pytest.mark.asyncio
-async def test_redis_pubsub_roundtrip():
-    server = fakeredis.FakeServer()
-    async_redis = fakeredis.FakeAsyncRedis(server=server, decode_responses=True)
-    sync_redis = fakeredis.FakeRedis(server=server, decode_responses=True)
+async def test_event_consumer_reads_from_cache():
+    mock_redis = AsyncMock()
+    expected_data = {"status": "ready", "url": "http://test/download"}
+    mock_redis.get.side_effect = [None, None, json.dumps(expected_data)]
+    consumer = EventConsumer(client=mock_redis)
+    results = []
+    async for item in consumer.wait_for_result(
+        "test-id", max_attempts=5, time_sleep=0.01
+    ):
+        results.append(item)
+    assert len(results) == 1
+    assert results[0] == expected_data
+    assert mock_redis.get.call_count == 3
 
-    pubsub = async_redis.pubsub()
-    await pubsub.subscribe("test_channel")
 
-    subscribers_count = sync_redis.publish("test_channel", '{"status": "ready"}')
-    assert subscribers_count == 1
-
-    await asyncio.sleep(0.1)
-
-    while True:
-        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-        if message:
-            break
-
-    assert message is not None
-    assert message["data"] == '{"status": "ready"}'
-
-    await pubsub.close()
+@pytest.mark.asyncio
+async def test_event_consumer_returns_none_on_timeout():
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    consumer = EventConsumer(client=mock_redis)
+    results = []
+    async for item in consumer.wait_for_result(
+        "test-id", max_attempts=3, time_sleep=0.01
+    ):
+        results.append(item)
+    assert len(results) == 1
+    assert results[0]["status"] == "failed"
+    assert results[0]["reason"] == "timeout"

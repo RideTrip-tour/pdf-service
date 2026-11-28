@@ -1,13 +1,12 @@
-import asyncio
 import json
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, Response
 from fastapi.responses import StreamingResponse
 
-from app.broker.connection import async_redis
 from app.broker.worker import celery_app
-from app.publishers import task_publisher
+from app.constants import DOWNLOAD_URL
+from app.publishers import event_consumer, task_publisher
 from app.routes.dependencies import AnonymDep, PDFServiceDep, UserDep
 from app.schemas.contracts import PdfRequest
 from config import settings
@@ -34,8 +33,9 @@ async def get_status(request_id: str):
     status = task.state
     response = {"request_id": request_id, "status": status}
     if status == "SUCCESS":
-        url = f"{settings.url_prefix}api/pdf/download/{request_id}"
-        response["url"] = url
+        response["url"] = DOWNLOAD_URL.format(
+            url_prefix=settings.url_prefix, request_id=request_id
+        )
     if status == "FAILURE":
         response["reason"] = str(task.result) if task.result else "Unknown error"
     return response
@@ -45,26 +45,12 @@ async def get_status(request_id: str):
 async def pdf_events(request_id: str):
     """SSE-поток для ожидания результата генерации PDF.
     Открывается сразу после отправки заявки на генерацию.
-    Сервер слушает Redis Pub/Sub канал `pdf.task_updates:{request_id}` и
-    отправляет данные, как только воркер завершит работу."""
+    Сервер опрашивает Redis-кэш по ключу task_updates:{request_id}
+    до 30 раз с интервалом 1 секунда."""
 
     async def event_generator():
-        pubsub = async_redis.pubsub()
-        await pubsub.subscribe(f"pdf.task_updates:{request_id}")
-        try:
-            async for message in pubsub.listen():
-                if message["type"] != "message":
-                    continue
-                data = message["data"]
-                yield f"data: {data}\n\n"
-                parsed = json.loads(data)
-                if parsed.get("status") in ["ready", "failed"]:
-                    break
-        except asyncio.CancelledError:
-            pass
-        finally:
-            await pubsub.unsubscribe(f"pdf.task_updates:{request_id}")
-            await pubsub.close()
+        async for result in event_consumer.wait_for_result(request_id):
+            yield f"data: {json.dumps(result)}\n\n"
 
     return StreamingResponse(
         event_generator(),
