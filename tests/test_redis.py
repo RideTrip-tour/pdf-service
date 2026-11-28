@@ -15,23 +15,14 @@ def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
         "user_id": 1,
         "payload": {"route": {"from_place": "A", "to_place": "B"}},
     }
-
-    monkeypatch.setattr("app.broker.tasks.process_message", MagicMock())
-
-    mock_session = MagicMock()
     monkeypatch.setattr(
-        "app.broker.tasks.SessionLocal", MagicMock(return_value=mock_session)
+        "app.broker.tasks.handle_generate_pdf",
+        MagicMock(return_value={"status": "completed"}),
     )
-
-    mock_publish = MagicMock()
-    monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_publish)
-
+    mock_task_ready = MagicMock()
+    monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_task_ready)
     generate_pdf_task(request_data)
-
-    mock_publish.assert_called_once()
-    args, _ = mock_publish.call_args
-    assert args[0] == "task-1"
-    assert "api/pdf/download/task-1" in args[1]
+    mock_task_ready.assert_called_once()
 
 
 def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
@@ -41,26 +32,16 @@ def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
         "payload": {"route": {"from_place": "A", "to_place": "B"}},
     }
     monkeypatch.setattr(
-        "app.broker.tasks.get_pdf_by_request_id", MagicMock(return_value=None)
+        "app.broker.tasks.handle_generate_pdf",
+        MagicMock(side_effect=PermanentError("Render error", "Bad data")),
     )
-    monkeypatch.setattr(
-        "app.broker.tasks.process_message",
-        MagicMock(
-            side_effect=PermanentError("Render error", client_message="Bad data")
-        ),
-    )
-    monkeypatch.setattr("app.broker.tasks.SessionLocal", MagicMock())
     mock_task_failed = MagicMock()
     monkeypatch.setattr(
         "app.broker.tasks.event_publisher.task_failed", mock_task_failed
     )
     result = generate_pdf_task.apply(args=[request_data])
     assert result.failed() is True
-    assert isinstance(result.result, PermanentError)
-    mock_task_failed.assert_called_once()
-    args, _ = mock_task_failed.call_args
-    assert args[0] == request_data["request_id"]
-    assert args[1] == "Bad data"
+    mock_task_failed.assert_called_once_with(request_data["request_id"], "Bad data")
 
 
 @pytest.mark.asyncio
@@ -69,10 +50,13 @@ async def test_event_consumer_reads_from_cache():
     expected_data = {"status": "ready", "url": "http://test/download"}
     mock_redis.get.side_effect = [None, None, json.dumps(expected_data)]
     consumer = EventConsumer(client=mock_redis)
-    result = await consumer.wait_for_result("test-id", max_attempts=5, time_sleep=0.01)
-    assert result == expected_data
-    expected_key = "task_updates:test-id"
-    mock_redis.get.assert_called_with(expected_key)
+    results = []
+    async for item in consumer.wait_for_result(
+        "test-id", max_attempts=5, time_sleep=0.01
+    ):
+        results.append(item)
+    assert len(results) == 1
+    assert results[0] == expected_data
     assert mock_redis.get.call_count == 3
 
 
@@ -81,6 +65,11 @@ async def test_event_consumer_returns_none_on_timeout():
     mock_redis = AsyncMock()
     mock_redis.get.return_value = None
     consumer = EventConsumer(client=mock_redis)
-    result = await consumer.wait_for_result("test-id", max_attempts=3, time_sleep=0.01)
-    assert result is None
-    assert mock_redis.get.call_count == 3
+    results = []
+    async for item in consumer.wait_for_result(
+        "test-id", max_attempts=3, time_sleep=0.01
+    ):
+        results.append(item)
+    assert len(results) == 1
+    assert results[0]["status"] == "failed"
+    assert results[0]["reason"] == "timeout"

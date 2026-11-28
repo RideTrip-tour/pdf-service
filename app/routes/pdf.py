@@ -49,10 +49,7 @@ async def pdf_events(request_id: str):
     до 30 раз с интервалом 1 секунда."""
 
     async def event_generator():
-        result = await event_consumer.wait_for_result(request_id)
-        if result is None:
-            yield f"data: {json.dumps({'status': 'failed', 'reason': 'timeout'})}\n\n"
-        else:
+        async for result in event_consumer.wait_for_result(request_id):
             yield f"data: {json.dumps(result)}\n\n"
 
     return StreamingResponse(
