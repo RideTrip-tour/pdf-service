@@ -19,6 +19,8 @@ def test_generate_pdf_task_publishes_to_redis_on_success(monkeypatch):
         "app.broker.tasks.handle_generate_pdf",
         MagicMock(return_value={"status": "completed"}),
     )
+    mock_task_processing = MagicMock()
+    monkeypatch.setattr("app.broker.tasks.event_publisher.task_processing", mock_task_processing)
     mock_task_ready = MagicMock()
     monkeypatch.setattr("app.broker.tasks.event_publisher.task_ready", mock_task_ready)
     generate_pdf_task(request_data)
@@ -35,6 +37,8 @@ def test_generate_pdf_task_publishes_failed_on_error(monkeypatch):
         "app.broker.tasks.handle_generate_pdf",
         MagicMock(side_effect=PermanentError("Render error", "Bad data")),
     )
+    mock_task_processing = MagicMock()
+    monkeypatch.setattr("app.broker.tasks.event_publisher.task_processing", mock_task_processing)
     mock_task_failed = MagicMock()
     monkeypatch.setattr(
         "app.broker.tasks.event_publisher.task_failed", mock_task_failed
